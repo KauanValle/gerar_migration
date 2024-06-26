@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerar Código Migration</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.1/dist/css/adminlte.min.css">
+    <style>
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #card-make-migration,
+        .card-tipo-nota,
+        #input_nfe,
+        #input_nfce,
+        #input_nfse,
+        #input_cte,
+        #input_mdfe,
+        #input_compras {
+            display: none;
+        }   
+        body {
+            background-color: #3D637F;
+        } 
+
+    </style>
+</head>
+<body>
+
+    <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.1/dist/js/adminlte.min.js"></script>  
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.js"></script>
+
+    <script>
+
+        const arrayTipoNota = ['nfe', 'nfce', 'nfse', 'mdfe', 'cte', 'compras'];
+        
+        function gerarCodigo() {
+            var numeroCard = document.getElementById("numero_card");
+            var cliente = document.getElementById("cliente");
+            var ambiente = document.getElementById("ambiente");
+            var alerta = document.getElementById("alerta");
+
+            var checkbox_nfe = document.getElementById("checkbox_card_nfe");
+            var checkbox_nfce = document.getElementById("checkbox_card_nfce");
+            var checkbox_nfse = document.getElementById("checkbox_card_nfse");
+            var checkbox_mdfe = document.getElementById("checkbox_card_mdfe");
+            var checkbox_cte = document.getElementById("checkbox_card_cte");
+            var checkbox_compras = document.getElementById("checkbox_card_compras");
+
+            
+            if (cliente.value === '' || numeroCard.value === '') {
+                Swal.fire({
+                    title: 'Por favor, preencha todos os campos.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: "#3085d6",
+                });
+                verificaClasseCamposVazios();
+                return;
+            }
+            verificaClasseCamposVazios();
+
+           if(
+                (checkbox_nfe.checked == false) && 
+                (checkbox_nfce.checked == false) && 
+                (checkbox_nfse.checked == false) &&
+                (checkbox_mdfe.checked == false) &&
+                (checkbox_cte.checked == false) &&
+                (checkbox_compras.checked == false)
+            ){
+                Swal.fire({
+                    title: 'Por favor, selecione pelo menos um tipo de nota!',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: "#3085d6",
+                });
+                return;
+            }
+        
+        
+            for(var i = 0; i < arrayTipoNota.length ; i++){
+                var tipo_nota = arrayTipoNota[i];
+                var tipoNotaMaiusculo = tipo_nota.toUpperCase();
+
+                if (document.getElementById("checkbox_card_" + tipo_nota).checked == true){
+
+                    if(document.getElementById("intervalo_notas_" + tipo_nota).value === "intervalo"){
+                        if((document.getElementById("input_inicio_" + tipo_nota).value === '') || (document.getElementById("input_fim_" + tipo_nota).value === '')){
+                           
+                            Swal.fire({
+                                title: 'Por favor, selecione o intervalo de notas da ' + tipoNotaMaiusculo,
+                                icon: 'error',
+                                confirmButtonText: 'OK',
+                                confirmButtonColor: "#3085d6",
+                            });
+                            document.getElementById("input_inicio_" + tipo_nota).value === '' ? document.getElementById("input_inicio_" + tipo_nota).classList.add('is-invalid') : document.getElementById("input_inicio_" + tipo_nota).classList.remove('is-invalid');
+                            document.getElementById("input_fim_" + tipo_nota).value === '' ? document.getElementById("input_fim_" + tipo_nota).classList.add('is-invalid') : document.getElementById("input_fim_" + tipo_nota).classList.remove('is-invalid');
+                            return;
+                        }
+                        document.getElementById("input_inicio_" + tipo_nota).classList.remove('is-invalid');
+                        document.getElementById("input_fim_" + tipo_nota).classList.remove('is-invalid');
+                    }
+                    if(document.getElementById("intervalo_notas_" + tipo_nota).value === "unica"){
+                        if((document.getElementById("input_unica_" + tipo_nota).value === '')){
+                            Swal.fire({
+                                title: 'Por favor, selecione o id da ' + tipoNotaMaiusculo,
+                                icon: 'error',
+                                confirmButtonText: 'OK',
+                                confirmButtonColor: "#3085d6",
+                            });
+                            document.getElementById("input_unica_" + tipo_nota).value === ''? document.getElementById("input_unica_" + tipo_nota).classList.add('is-invalid') : document.getElementById("input_unica_" + tipo_nota).classList.remove('is-invalid');
+                            return;
+                        }
+                        document.getElementById("input_unica_" + tipo_nota).classList.remove('is-invalid');
+                    }
+                }
+            }
+
+            function verificaClasseCamposVazios(){
+            
+                var numeroCard = document.getElementById("numero_card");
+                var cliente = document.getElementById("cliente");
+            
+                numeroCard.value === '' ? numeroCard.classList.add('is-invalid') : numeroCard.classList.remove('is-invalid');
+                cliente.value === '' ? cliente.classList.add('is-invalid') : cliente.classList.remove('is-invalid');
+            }
+
+
+            var codigo_migration = `
+                <?php
+
+                use Illuminate\\Database\\Migrations\\Migration;
+                use Illuminate\\Database\\Schema\\Blueprint;
+                use Illuminate\\Support\\Facades\\Schema;
+                use Illuminate\\Support\\Facades\\DB;
+
+                class ScriptLeg${numeroCard.value}ExclusaoNotasCliente${cliente.value} extends Migration
+                {
+                    const CLIENTE = ${cliente.value};
+                    `;
+
+                for(var i = 0; i < arrayTipoNota.length ; i++){
+                    var tipo_nota = arrayTipoNota[i];
+
+                    if(document.getElementById("checkbox_card_" + tipo_nota).checked == true){
+                        codigo_migration += `
+                    const ${tipo_nota.toLocaleUpperCase()}_TABLE = '${document.getElementById("checkbox_card_" + tipo_nota).value}';`;
+                        if(document.getElementById("intervalo_notas_" + tipo_nota).value === "intervalo"){
+                            codigo_migration += `
+                    const ${tipo_nota.toLocaleUpperCase()}_INTERVAL = [${document.getElementById("input_inicio_" + tipo_nota).value}, ${document.getElementById("input_fim_" + tipo_nota).value}];
+                        `;
+                        
+                        }else if(document.getElementById("intervalo_notas_" + tipo_nota).value === "unica"){
+                            codigo_migration += `
+                    const ${tipo_nota.toLocaleUpperCase()}_ID = ${document.getElementById("input_unica_" + tipo_nota).value};
+                        `;
+                    }else{
+                        codigo_migration += `
+                        `;
+                    }
+
+                    }
+                }
+
+                codigo_migration += `
+                    public function up()
+                    {`;
+
+                for(var i = 0; i < arrayTipoNota.length ; i++){
+                    var tipo_nota = arrayTipoNota[i];
+
+                    if(document.getElementById("checkbox_card_" + tipo_nota).checked == true){
+                        codigo_migration += `
+                        //${tipo_nota.toLocaleUpperCase()}
+                        DB::table(self::${tipo_nota.toLocaleUpperCase()}_TABLE)
+                            ->where('id_empresa', '=', self::CLIENTE)`;
+                        
+                            if(document.getElementById("intervalo_notas_" + tipo_nota).value === "intervalo"){
+                                codigo_migration += `
+                            ->whereBetween('id_pedido', self::${tipo_nota.toLocaleUpperCase()}_INTERVAL)`;
+                            
+                            }else if(document.getElementById("intervalo_notas_" + tipo_nota).value === "unica"){
+                                codigo_migration += `
+                            ->where('id_pedido', self::${tipo_nota.toLocaleUpperCase()}_ID)`;
+                    
+                            }
+                        codigo_migration += `
+                            ->update(['lixeira' => 'Sim']);
+                                `;
+                    }
+                }
+
+                codigo_migration += `
+                    }
+
+                    public function down()
+                    {`;
+
+
+                for(var i = 0; i < arrayTipoNota.length ; i++){
+                    var tipo_nota = arrayTipoNota[i];
+
+                    if(document.getElementById("checkbox_card_" + tipo_nota).checked == true){
+                        codigo_migration += `
+                        //${tipo_nota.toLocaleUpperCase()}
+                        DB::table(self::${tipo_nota.toLocaleUpperCase()}_TABLE)
+                            ->where('id_empresa', '=', self::CLIENTE)`;
+                        
+                            if(document.getElementById("intervalo_notas_" + tipo_nota).value === "intervalo"){
+                                codigo_migration += `
+                            ->whereBetween('id_pedido', self::${tipo_nota.toLocaleUpperCase()}_INTERVAL)`;
+                            
+                            }else if(document.getElementById("intervalo_notas_" + tipo_nota).value === "unica"){
+                                codigo_migration += `
+                            ->where('id_pedido', self::${tipo_nota.toLocaleUpperCase()}_ID)`;
+                    
+                            }
+                        codigo_migration += `
+                            ->update(['lixeira' => 'Nao']);
+                                `;
+                    }
+                }
+                
+                    codigo_migration += `
+                    }
+                }
+                `;
+               
+
+            var codigo_make_migration = `php artisan make:migration script_leg_${numeroCard.value}_exclusao_notas_cliente_${cliente.value}`;
+
+            if(ambiente.value == 'develop'){
+                var codigo_git_checkout = `git checkout -b feature-leg-dev-${numeroCard.value}`;
+                document.getElementById("git-push").innerText = "git push origin feature-leg-dev-" + numeroCard.value;
+                alerta.classList.add('card-warning');
+                document.getElementById("conteudo-alerta").innerText = "Migration criada para utilização no ambiente de DESENVOLVIMENTO!";
+               
+            }else{
+                var codigo_git_checkout = `git checkout -b feature-leg-${numeroCard.value}`;
+                document.getElementById("git-push").innerText = "git push origin feature-leg-" + numeroCard.value;
+                alerta.classList.add('card-danger');
+                document.getElementById("conteudo-alerta").innerText = "Migration criada para utilização no ambiente de PRODUÇÃO!";
+            }
+           
+            document.getElementById("codigo-make-migration").innerText = codigo_make_migration;
+            document.getElementById("codigo-migtation").innerText = codigo_migration;
+            document.getElementById("git-checkout-b").innerText = codigo_git_checkout;
+            document.getElementById("git-checkout-branch").innerText = "git checkout " + ambiente.value;
+            document.getElementById("git-pull-branch").innerText = "git pull origin " + ambiente.value;
+            document.getElementById("git-checkout-b").innerText = codigo_git_checkout;
+            document.getElementById("git-add").innerText = "git add .";
+            document.getElementById("git-commit").innerText = "git commit -m \"Exclusão de notas do cliente " + cliente.value + "\"";
+            document.getElementById("card-make-migration").style.display = "flex";
+            showToast('success', 'Código gerado!');
+        }
+
+        function limparFormulario(){
+
+            for(var i = 0; i < arrayTipoNota.length ; i++){
+                var tipo_nota = arrayTipoNota[i];
+
+                document.getElementById("card_" + tipo_nota).style.display = "none";
+                document.getElementById("intervalo_notas_" + tipo_nota).value = "todas";
+                document.getElementById("inicio_" + tipo_nota).style.display = "none";
+                document.getElementById("fim_" + tipo_nota).style.display = "none";
+                document.getElementById("unica_" + tipo_nota).style.display = "none";
+                document.getElementById("input_inicio_" + tipo_nota).value = "";
+                document.getElementById("input_fim_" + tipo_nota).value = "";
+                document.getElementById("input_unica_" + tipo_nota).value = "";
+                document.getElementById("checkbox_card_" + tipo_nota).checked = false;
+                document.getElementById("input_inicio_" + tipo_nota).classList.remove('is-invalid');
+                document.getElementById("input_fim_" + tipo_nota).classList.remove('is-invalid');
+                document.getElementById("input_unica_" + tipo_nota).classList.remove('is-invalid');
+            }
+            
+            document.getElementById("card-make-migration").style.display = "none";
+            document.getElementById("numero_card").value = '';
+            document.getElementById("cliente").value = '';
+            document.getElementById("ambiente").value = 'develop';
+           
+            
+        }
+
+        function showToast(icon, title) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: icon,
+                title: title,
+                showConfirmButton: false,
+                timer: 3000
+            });
+        }
+
+        function copiarCodigoMakeMigration() {
+            var codigoGerado = document.getElementById("codigo-make-migration").innerText;
+
+            navigator.clipboard.writeText(codigoGerado).then(function() {
+                showToast('success', 'Código copiado!');
+                Swal.fire({
+                    title: 'Código copiado!',
+                    text: 'Após criar a migration, mova para a pasta "scripts"',
+                    icon: 'info',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: "#3085d6"
+                });
+            }).catch(function(err) {
+                console.error('Erro ao copiar o código: ', err);
+                showToast('error', 'Erro ao copiar o código. Por favor, tente novamente.');
+            });
+        }
+
+        function copiarCodigoMigration() {
+            var codigoGerado = document.getElementById("codigo-migtation").innerText;
+
+            navigator.clipboard.writeText(codigoGerado).then(function() {
+                showToast('success', 'Código copiado!');
+                
+            }).catch(function(err) {
+                console.error('Erro ao copiar o código: ', err);
+                showToast('error', 'Erro ao copiar o código. Por favor, tente novamente.');
+            });
+        }
+
+        function copiarTextoGitCheckout() {
+            var codigoGerado = document.getElementById("git-checkout-b").innerText;
+
+            navigator.clipboard.writeText(codigoGerado).then(function() {
+                showToast('success', 'Código copiado!');
+            }).catch(function(err) {
+                console.error('Erro ao copiar o código: ', err);
+                showToast('error', 'Erro ao copiar o código. Por favor, tente novamente.');
+            });
+        }
+
+        function copiarTextoDiv(elementId) {
+            var codigoGerado = document.getElementById(elementId).innerText.trim();
+            navigator.clipboard.writeText(codigoGerado).then(function() {
+                showToast('success', 'Código copiado!');
+            }).catch(function(err) {
+                console.error('Erro ao copiar o texto: ', err);
+                showToast('error', 'Erro ao copiar o código. Por favor, tente novamente.');
+            });
+        }
+        function devinirVisibilidadeCardTipoNota(divId) {
+            var checkbox = document.getElementById("checkbox_" + divId);
+            var div = document.getElementById(divId);
+            div.style.display = checkbox.checked ? "block" : "none";
+        }
+
+        function devinirVisibilidadeInputTipoNota(tipoNota) {
+            var grupoInput = document.getElementById("input_" + tipoNota);
+            var selectIntervalo = document.getElementById("intervalo_notas_" + tipoNota);
+            var inputInicio = document.getElementById("inicio_" + tipoNota);
+            var inputFim = document.getElementById("fim_" + tipoNota);
+            var inputUnica = document.getElementById("unica_" + tipoNota);
+
+            grupoInput.style.display = "block";
+
+            if(selectIntervalo.value == 'unica'){
+                inputInicio.style.display = inputFim.style.display = "none";
+                inputUnica.style.display = "block";
+            }else if(selectIntervalo.value == 'intervalo'){
+                inputInicio.style.display = inputFim.style.display = "block";
+                inputUnica.style.display = "none";
+            }else{
+                inputInicio.style.display = inputFim.style.display = inputUnica.style.display = "none";
+            }
+        }
+        
+    </script>
+
+    <div class="row mt-5 mb-3 " >
+        <div class="col-lg-2">
+        </div>
+        <div class="col-lg-8 mt-5">
+        </div>
+        <div class="col-lg-2">
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-1">
+        </div>
+        <div class="col-lg-10">
+            <div class="card card-outline card-info shadow">
+                <div class="card-header text-center">
+                    <h3 class="mt-2 mb-3">Gerar Migration de exclusão de notas</h3>
+                    
+                </div>
+                <form action="/teste" method="POST">
+                    <div class="card-body">
+                        <form class="form-group">
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <div class="card card-outline card-info shadow">
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-lg-4">
+                                                    <label for="numero_card">Número do Card</label>
+                                                    <input type="number" id="numero_card" name="numero_card" class="form-control"><br>
+                                                </div>
+                                                <div class="col-lg-4">
+                                                    <label for="cliente">ID do Cliente</label>
+                                                    <input type="text" id="cliente" name="cliente" class="form-control"><br>
+                                                </div>
+                                                <div class="col-lg-4">
+                                                    <label for="ambiente">Ambiente</label>
+                                                    <select id="ambiente" class="form-control">
+                                                        <option value="develop">Dev</option>
+                                                        <option value="master">Staging/Prod</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-lg-2">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="checkbox_card_nfe" name="checkbox_card_nfe"
+                                                            onchange="devinirVisibilidadeCardTipoNota('card_nfe')" value="nfe_vendas"
+                                                        >
+                                                        <label for="checkbox_card_nfe" class="form-check-label">NF-e <small>(Vendas)</small></label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-2">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="checkbox_card_nfce" name="checkbox_card_nfce"
+                                                            onchange="devinirVisibilidadeCardTipoNota('card_nfce')" value="nfe_consumidor"
+                                                        >
+                                                        <label for="checkbox_card_nfce" class="form-check-label">NFC-e <small>(Consumidor)</small></label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-2">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="checkbox_card_nfse" name="checkbox_card_nfse"
+                                                            onchange="devinirVisibilidadeCardTipoNota('card_nfse')" value="nfe_servico"
+                                                        >
+                                                        <label for="checkbox_card_nfse" class="form-check-label">NFS-e <small>(Serviço)</small></label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-2">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="checkbox_card_cte" name="checkbox_card_cte"
+                                                            onchange="devinirVisibilidadeCardTipoNota('card_cte')" value="nfe_cte"
+                                                        >
+                                                        <label for="checkbox_card_cte" class="form-check-label">CT-e <small>(Transporte)</small></label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-2">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="checkbox_card_mdfe" name="checkbox_card_mdfe"
+                                                            onchange="devinirVisibilidadeCardTipoNota('card_mdfe')" value="nfe_mdfe"
+                                                        >
+                                                        <label for="checkbox_card_mdfe" class="form-check-label">MDF-e <small>(Manifesto)</small></label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-2">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="checkbox_card_compras" name="checkbox_card_compras"
+                                                            onchange="devinirVisibilidadeCardTipoNota('card_compras')" value="nfe_entradas"
+                                                        > 
+                                                        <label for="checkbox_card_compras" class="form-check-label">Compras <small>(Entrada)</small></label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div> 
+                                    </div>
+                                </div>
+                            </div>
+    
+                            <div class="row">
+                                <!-- NF-e-->
+                                <div class="col-lg-6 card-tipo-nota" id="card_nfe">
+                                    <div class="card card-outline card-success shadow" >
+                                        <div class="card-header text-center">
+                                            NF-e <small>(Vendas)</small>
+                                        </div>
+                                        <div class="card-body ">
+                                            <div class="row">
+                                                <div class="col-lg-3">
+                                                    <label for="intervalo_notas_nfe"><small>Intervalo</small></label>
+                                                    <select id="intervalo_notas_nfe" class="form-control" onchange="devinirVisibilidadeInputTipoNota('nfe')">
+                                                        <option value="todas">Todas</option>
+                                                        <option value="intervalo">Intervalo</option>
+                                                        <option value="unica">Única</option>
+                                                    </select>
+                                                </div>
+                                                <div id="input_nfe" class="col-lg-9">
+                                                    <div class="row">
+                                                        <div class="col-lg-6" id="inicio_nfe">
+                                                            <label for="inicio_nfe"><small>Primeira Nota</small></label>
+                                                            <input type="number" id="input_inicio_nfe" name="input_inicio_nfe" class="form-control">
+                                                        </div>
+                                                        <div class="col-lg-6" id="fim_nfe" >
+                                                            <label for="fim_nfe"><small>Última Nota</small></label>
+                                                            <input type="number" id="input_fim_nfe" name="input_fim_nfe" class="form-control">
+                                                        </div>
+                                                        <div class="col-lg-6" id="unica_nfe" >
+                                                            <label for="unica_nfe"><small>Id da Nota</small></label>
+                                                            <input type="number" id="input_unica_nfe" name="input_unica_nfe" class="form-control">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                 <!-- NFC-e -->
+                                 <div class="col-lg-6 card-tipo-nota" id="card_nfce">
+                                    <div class="card card-outline card-warning shadow ">
+                                        <div class="card-header text-center">
+                                            NFC-e <small>(Consumidor)</small>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-lg-3">
+                                                    <label for="intervalo_notas_nfce"><small>Intervalo</small></label>
+                                                    <select id="intervalo_notas_nfce" class="form-control" onchange="devinirVisibilidadeInputTipoNota('nfce')">
+                                                        <option value="todas">Todas</option>
+                                                        <option value="intervalo">Intervalo</option>
+                                                        <option value="unica">Única</option>
+                                                    </select>
+                                                </div>
+                                                <div id="input_nfce" class="col-lg-9">
+                                                    <div class="row">
+                                                        <div class="col-lg-6" id="inicio_nfce">
+                                                            <label for="inicio_nfce"><small>Primeira Nota</small></label>
+                                                            <input type="number" id="input_inicio_nfce" name="input_inicio_nfce" class="form-control">
+                                                        </div>
+                                                        <div class="col-lg-6" id="fim_nfce">
+                                                            <label for="fim_nfce"><small>Última Nota</small></label>
+                                                            <input type="number" id="input_fim_nfce" name="input_fim_nfce" class="form-control">
+                                                        </div>
+                                                        <div class="col-lg-6" id="unica_nfce">
+                                                            <label for="unica_nfce"><small>Id da Nota</small></label>
+                                                            <input type="number" id="input_unica_nfce" name="input_unica_nfce" class="form-control">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                 <!-- NFS-e -->
+                                 <div class="col-lg-6 card-tipo-nota" id="card_nfse">
+                                    <div class="card card-outline card-danger shadow ">
+                                        <div class="card-header text-center">
+                                            NFS-e <small>(Serviço)</small>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-lg-3">
+                                                    <label for="intervalo_notas_nfse"><small>Intervalo</small></label>
+                                                    <select id="intervalo_notas_nfse" class="form-control" onchange="devinirVisibilidadeInputTipoNota('nfse')">
+                                                        <option value="todas">Todas</option>
+                                                        <option value="intervalo">Intervalo</option>
+                                                        <option value="unica">Única</option>
+                                                    </select>
+                                                </div>
+                                                <div id="input_nfse" class="col-lg-9">
+                                                    <div class="row">
+                                                        <div class="col-lg-6" id="inicio_nfse">
+                                                            <label for="inicio_nfse"><small>Primeira Nota</small></label>
+                                                            <input type="number" id="input_inicio_nfse" name="input_inicio_nfse" class="form-control">
+                                                        </div>
+                                                        <div class="col-lg-6" id="fim_nfse">
+                                                            <label for="fim_nfse"><small>Última Nota</small></label>
+                                                            <input type="number" id="input_fim_nfse" name="input_fim_nfse" class="form-control">
+                                                        </div>
+                                                        <div class="col-lg-6" id="unica_nfse">
+                                                            <label for="unica_nfse"><small>Id da Nota</small></label>
+                                                            <input type="number" id="input_unica_nfse" name="input_unica_nfse" class="form-control">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                 <!-- CT-e -->
+                                 <div class="col-lg-6 card-tipo-nota" id="card_cte">
+                                    <div class="card card-outline card-primary shadow ">
+                                        <div class="card-header text-center">
+                                            CT-e <small>(Conhecimento de Transportes)</small>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-lg-3">
+                                                    <label for="intervalo_notas_cte"><small>Intervalo</small></label>
+                                                    <select id="intervalo_notas_cte" class="form-control" onchange="devinirVisibilidadeInputTipoNota('cte')">
+                                                        <option value="todas">Todas</option>
+                                                        <option value="intervalo">Intervalo</option>
+                                                        <option value="unica">Única</option>
+                                                    </select>
+                                                </div>
+                                                <div id="input_cte" class="col-lg-9">
+                                                    <div class="row">
+                                                        <div class="col-lg-6" id="inicio_cte">
+                                                            <label for="inicio_cte" id="inicio_cte"><small>Primeira Nota</small></label>
+                                                            <input type="number" id="input_inicio_cte" name="input_inicio_cte" class="form-control">
+                                                        </div>
+                                                        <div class="col-lg-6" id="fim_cte">
+                                                            <label for="fim_cte"><small>Última Nota</small></label>
+                                                            <input type="number" id="input_fim_cte" name="input_fim_cte" class="form-control">
+                                                        </div>
+                                                        <div class="col-lg-6" id="unica_cte">
+                                                            <label for="unica_cte"><small>Id da Nota</small></label>
+                                                            <input type="number" id="input_unica_cte" name="input_unica_cte" class="form-control">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                 <!-- MDF-e -->
+                                 <div class="col-lg-6 card-tipo-nota" id="card_mdfe">
+                                    <div class="card card-outline card-indigo shadow ">
+                                        <div class="card-header text-center">
+                                            MDF-e <small>(Manifestos)</small>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-lg-3">
+                                                    <label for="intervalo_notas_mdfe"><small>Intervalo</small></label>
+                                                    <select id="intervalo_notas_mdfe" class="form-control" onchange="devinirVisibilidadeInputTipoNota('mdfe')">
+                                                        <option value="todas">Todas</option>
+                                                        <option value="intervalo">Intervalo</option>
+                                                        <option value="unica">Única</option>
+                                                    </select>
+                                                </div>
+                                                <div id="input_mdfe" class="col-lg-9">
+                                                    <div class="row">
+                                                        <div class="col-lg-6" id="inicio_mdfe">
+                                                            <label for="inicio_mdfe"><small>Primeira Nota</small></label>
+                                                            <input type="number" id="input_inicio_mdfe" class="form-control">
+                                                        </div>
+                                                        <div class="col-lg-6" id="fim_mdfe" >
+                                                            <label for="fim_mdfe"><small>Última Nota</small></label>
+                                                            <input type="number" id="input_fim_mdfe" class="form-control">
+                                                        </div>
+                                                        <div class="col-lg-6" id="unica_mdfe">
+                                                            <label for="unica_mdfe"><small>Id da Nota</small></label>
+                                                            <input type="number" id="input_unica_mdfe" class="form-control">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                 <!-- Compras -->
+                                 <div class="col-lg-6 card-tipo-nota" id="card_compras">
+                                    <div class="card card-outline card-orange shadow ">
+                                        <div class="card-header text-center">
+                                            Compras
+                                        </div>
+                                        <div class="card-body ">
+                                            <div class="row">
+                                               
+                                                <div class="col-lg-3">
+                                                    <label for="intervalo_notas_compras"><small>Intervalo</small></label>
+                                                    <select id="intervalo_notas_compras" class="form-control" onchange="devinirVisibilidadeInputTipoNota('compras')">
+                                                        <option value="todas">Todas</option>
+                                                        <option value="intervalo">Intervalo</option>
+                                                        <option value="unica">Única</option>
+                                                    </select>
+                                                </div>
+                                                <div id="input_compras" class="col-lg-9">
+                                                    <div class="row">
+                                                        <div class="col-lg-6" id="inicio_compras" >
+                                                            <label for="inicio_compras"><small>Primeira Nota</small></label>
+                                                            <input type="number" id="input_inicio_compras" class="form-control mt-0">
+                                                        </div>
+                                                        <div class="col-lg-6" id="fim_compras" >
+                                                            <label for="fim_compras" ><small>Última Nota</small></label>
+                                                            <input type="number" id="input_fim_compras" class="form-control mt-0">
+    
+                                                        </div>
+                                                        <div class="col-lg-6" id="unica_compras">
+                                                            <label for="unica_compras"><small>Id da Nota</small></label>
+                                                            <input type="number" id="input_unica_compras" class="form-control mt-0">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-lg-6">
+                                    <!-- <button type="button" onclick="gerarCodigo()" class="btn btn-lg bg-gradient-primary btn-block">
+                                        Gerar Código
+                                    </button> -->
+                                    <button class="btn btn-lg bg-gradient-primary btn-block">Gerar Código</button>
+                                   
+                                </div>
+                                <div class="col-lg-6">
+               
+                                    <button type="button" onclick="limparFormulario()" class="btn btn-lg bg-gradient-info btn-block">
+                                        Limpar formulário
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+    
+                    </div>
+                </form>
+                
+            </div>
+            
+        </div>
+    </div>
+    <div class="row" id="card-make-migration">
+        <div class="col-lg-2">
+
+        </div>
+        <div class="col-lg-8">
+            <div class="card shadow" id="alerta">
+                <div class="card-header">
+                    <h5>
+                        <span id="conteudo-alerta"></span>
+                    </h5>
+                </div>
+
+                <div class="card-body">
+                    <small>Acessar a branch de origem (develop/master).</small>
+                    <div class="row" style="position: relative;">
+                        <div class="col-lg-12">
+                           
+                            <pre id="git-checkout-branch"></pre>
+                            <div style="position: absolute; top: 0; right: 0;">
+                                <button onclick="copiarTextoDiv('git-checkout-branch')" class="btn btn-link" title="Copiar">
+                                    <ion-icon name="copy-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <small>Atualizar de origem.</small>
+                    <div class="row" style="position: relative;">
+                        <div class="col-lg-12">
+                            <pre id="git-pull-branch"></pre>
+                            <div style="position: absolute; top: 0; right: 0;">
+                                <button onclick="copiarTextoDiv('git-pull-branch')" class="btn btn-link" title="Copiar">
+                                    <ion-icon name="copy-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <small>Criar uma nova branch a partir da branch de origem.</small>
+                    <div class="row" style="position: relative;">
+                        <div class="col-lg-12">
+                            <pre id="git-checkout-b"></pre>
+                            <div style="position: absolute; top: 0; right: 0;">
+                                <button onclick="copiarTextoGitCheckout()" class="btn btn-link" title="Copiar">
+                                    <ion-icon name="copy-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <small>Criar a migration.</small>
+                    <div class="row" style="position: relative;">
+                        <div class="col-lg-12">
+                            <pre id="codigo-make-migration"></pre>
+                            <div style="position: absolute; top: 0; right: 0;">
+                                <button onclick="copiarCodigoMakeMigration()" class="btn btn-link" title="Copiar">
+                                    <ion-icon name="copy-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <small>Adicionar o código na migration criada.</small>
+                    <div class="row" style="position: relative;">
+                        <div class="col-lg-12">
+                            <pre id="codigo-migtation"></pre>
+                            <div style="position: absolute; top: 0; right: 0;">
+                                <button onclick="copiarCodigoMigration()" class="btn btn-link" title="Copiar">
+                                    <ion-icon name="copy-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <small>Prepara as alterações para serem enviadas no commit. </small>
+                    <div class="row" style="position: relative;">
+                        <div class="col-lg-12">
+                            <pre id="git-add"></pre>
+                            <div style="position: absolute; top: 0; right: 0;">
+                                <button onclick="copiarTextoDiv('git-add')" class="btn btn-link" title="Copiar">
+                                    <ion-icon name="copy-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <small>Enviar as alterações para o repositório remoto. </small>
+                    <div class="row" style="position: relative;">
+                        <div class="col-lg-12">
+                            <pre id="git-commit"></pre>
+                            <div style="position: absolute; top: 0; right: 0;">
+                                <button onclick="copiarTextoDiv('git-commit')" class="btn btn-link" title="Copiar">
+                                    <ion-icon name="copy-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <small>Criar o Merge Request </small>
+                    <div class="row" style="position: relative;">
+                        <div class="col-lg-12">
+                            <pre id="git-push"></pre>
+                            <div style="position: absolute; top: 0; right: 0;">
+                                <button onclick="copiarTextoDiv('git-push')" class="btn btn-link" title="Copiar">
+                                    <ion-icon name="copy-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        <div class="col-lg-2">
+            
+        </div>
+    </div>
+</body>
+</html>
